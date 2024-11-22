@@ -73,15 +73,6 @@ def _torque(value: str):
         return [np.nan, np.nan]
     
 
-def _remove_units(value):
-    try:
-        if isinstance(value, str):
-            return value.replace(r'\s.*', '', regex=True).replace('', np.nan).astype('float')
-    except:
-        pass
-    return np.nan
-
-
 def get_ohe_columns(X):
     return make_column_selector(dtype_include=object)(X) + ['seats']
 
@@ -97,15 +88,29 @@ class MileagePreprocessing(BasePreprocessing):
     def transform(self, X):
         return X[self.feature_names_in_].apply(lambda x: x.apply(_kmkg2kmpl))
     
+def _get_name(x):
+    try:
+        return x.split(' ')[0]
+    except:
+        return np.nan
+    
 
 class NamePreprocessing(BasePreprocessing):
     def transform(self, X):
-        return X[self.feature_names_in_].apply(lambda x: x.str.split(' ').str[0])
+        return X[self.feature_names_in_].apply(lambda x: x.apply(_get_name))
+    
+
+def _remove_units(x):
+    try:
+        x = re.sub(r'\s.*', '', x)
+        return float(x) if x != '' else np.nan
+    except:
+        return np.nan
     
 
 class RemoveUnitsPreprocessing(BasePreprocessing):
     def transform(self, X):
-        return X[self.feature_names_in_].apply(lambda x: x.apply(_remove_units))
+        return X[self.feature_names_in_].apply(lambda x: x.apply(_remove_units).astype('float'))
     
 
 class TorquePreprocessing(BaseEstimator, TransformerMixin):
@@ -118,5 +123,19 @@ class TorquePreprocessing(BaseEstimator, TransformerMixin):
     def transform(self, X):
         tmp = pd.DataFrame(X.torque.apply(_torque).to_list(), columns=['torque', 'max_torque_rpm'])
         df = pd.concat([X.drop(['torque'], axis=1), tmp], axis=1)
+        self._out_features = df.columns.tolist()
+        return df
+
+class NewFeatures(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
+    
+    def get_feature_names_out(self, input_features=None):
+        return self._out_features
+    
+    def transform(self, X):
+        df = X.copy()
+        df['power_per_liter'] = df['max_power'] / df['engine'] * 1000.
+        df['year2'] = df['year'] ** 2
         self._out_features = df.columns.tolist()
         return df
