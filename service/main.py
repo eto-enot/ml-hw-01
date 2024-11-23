@@ -5,7 +5,7 @@ from model import Item
 import pandas as pd
 
 app = FastAPI()
-model = load_model('model.dat')
+model = load_model('../model.pickle')
 
 
 @app.post("/predict_item")
