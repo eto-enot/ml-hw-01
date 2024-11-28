@@ -17,7 +17,7 @@ def predict_item(item: Item) -> float:
 
 
 @app.post("/predict_items")
-def predict_items(file: UploadFile = File(...)) -> List[float]:
+def predict_items(file: UploadFile = File(...)) -> StreamingResponse:
     data = pd.read_csv(file.file)
     data['selling_price'] = model.predict(data)
     stream = io.BytesIO()
